@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shopi Eval Bot
 
-## Getting Started
+Real-time AI assistant for Shopify Plus sales reps during merchant discovery calls.
 
-First, run the development server:
+## What it does
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Battlecards** surface automatically when a competitor is mentioned (SFCC, Adobe Commerce, BigCommerce, WooCommerce, commercetools)
+- **Fit cards** appear when a merchant describes a pain point Shopify solves
+- **Live qualification scorecard** tracks WHAT-WHO-WHY discovery criteria (Problem, Impact, Authority, Budget, Timeline, Champion, Process, Competition)
+- **Coaching notes** prompt the rep when something important happens
+
+## Architecture
+
+```
+app/          — Next.js 14 web app (demo UI + API layer)
+extension/    — Chrome extension (injects sidebar into Google Meet)
+lib/          — Knowledge base + system prompt
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### How it works
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+Google Meet audio
+  → Chrome extension (tab audio capture)
+  → /api/transcribe  (Deepgram nova-2, server-side)
+  → /api/analyze     (Claude via Shopify AI Proxy)
+  → Overlay sidebar  (battlecard / fit card / scorecard)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Latency: ~3–4 seconds from speech to card.
 
-## Learn More
+## Setup
 
-To learn more about Next.js, take a look at the following resources:
+### 1. Next.js app
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm install
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Add to `.env.local`:
+```
+OPENAI_API_KEY=<shopify-llm-gateway-token>
+SHOPIFY_LLM_BASE_URL=https://proxy.shopify.ai/v1
+DEEPGRAM_API_KEY=<your-deepgram-key>   # free at console.deepgram.com
+```
 
-## Deploy on Vercel
+```bash
+pnpm dev   # runs on localhost:3002
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2. Chrome extension
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Go to `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select the `extension/` folder
+4. Join a Google Meet call
+5. Click the 🎯 icon → **▶ Start Listening**
+
+## Demo UI
+
+Visit `http://localhost:3002` to test battlecard and fit card responses manually without a live call.
