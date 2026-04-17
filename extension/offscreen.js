@@ -1,5 +1,4 @@
 // offscreen.js — Runs in hidden offscreen document
-// Handles tab audio capture, chunked transcription, and analysis triggering
 
 let mediaStream = null;
 let isRecording = false;
@@ -8,6 +7,9 @@ let transcriptBuffer = '';
 let lastAnalyzedText = '';
 let silenceTimer = null;
 let maxTimer = null;
+
+// Signal to background.js that this document is loaded and ready
+chrome.runtime.sendMessage({ type: 'OFFSCREEN_READY' }).catch(() => {});
 
 // ── Message router ────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg) => {
@@ -25,7 +27,6 @@ async function startRecording(streamId, url) {
   serverUrl = url || 'http://localhost:3002';
 
   try {
-    // Acquire the tab's audio stream using the stream ID from tabCapture
     mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         mandatory: {
@@ -40,7 +41,10 @@ async function startRecording(streamId, url) {
     chrome.runtime.sendMessage({ type: 'CAPTURE_STARTED' });
     recordNextChunk();
   } catch (e) {
-    chrome.runtime.sendMessage({ type: 'CAPTURE_ERROR', error: e.message });
+    chrome.runtime.sendMessage({
+      type: 'CAPTURE_ERROR',
+      error: 'Mic access failed: ' + e.message,
+    });
   }
 }
 
@@ -53,7 +57,14 @@ function recordNextChunk() {
     : 'audio/webm';
 
   const chunks = [];
-  const recorder = new MediaRecorder(mediaStream, { mimeType });
+  let recorder;
+
+  try {
+    recorder = new MediaRecorder(mediaStream, { mimeType });
+  } catch (e) {
+    chrome.runtime.sendMessage({ type: 'CAPTURE_ERROR', error: 'MediaRecorder failed: ' + e.message });
+    return;
+  }
 
   recorder.ondataavailable = (e) => {
     if (e.data.size > 0) chunks.push(e.data);
@@ -62,22 +73,22 @@ function recordNextChunk() {
   recorder.onstop = async () => {
     if (chunks.length > 0) {
       const blob = new Blob(chunks, { type: mimeType });
-      // Skip tiny blobs — likely silence (< 2KB for 2s = essentially no audio)
-      if (blob.size > 2000) {
-        await transcribeChunk(blob);
-      }
+      if (blob.size > 2000) await transcribeChunk(blob);
     }
     if (isRecording) recordNextChunk();
   };
 
+  recorder.onerror = (e) => {
+    chrome.runtime.sendMessage({ type: 'CAPTURE_ERROR', error: 'Recorder error: ' + e.error?.message });
+  };
+
   recorder.start();
-  // 2-second chunks: balances latency vs. API call overhead
   setTimeout(() => {
     if (recorder.state === 'recording') recorder.stop();
   }, 2000);
 }
 
-// ── Transcribe one chunk via Next.js → Deepgram ───────────────────────────
+// ── Transcribe one chunk via Next.js → Whisper ───────────────────────────
 async function transcribeChunk(blob) {
   try {
     const form = new FormData();
@@ -96,26 +107,18 @@ async function transcribeChunk(blob) {
     const text = transcript.trim();
     transcriptBuffer = (transcriptBuffer + ' ' + text).trim();
 
-    // Surface partial transcript to overlay
     chrome.runtime.sendMessage({ type: 'TRANSCRIPT_PARTIAL', text });
-
     scheduleAnalysis();
   } catch (_) {}
 }
 
 // ── Analysis scheduling ───────────────────────────────────────────────────
-// Trigger analysis 1.5s after last transcript (speech pause), or 6s max
 function scheduleAnalysis() {
   if (silenceTimer) clearTimeout(silenceTimer);
-
-  silenceTimer = setTimeout(() => {
-    flushAnalysis();
-  }, 1500);
+  silenceTimer = setTimeout(flushAnalysis, 1500);
 
   if (!maxTimer) {
-    maxTimer = setTimeout(() => {
-      flushAnalysis();
-    }, 6000);
+    maxTimer = setTimeout(flushAnalysis, 6000);
   }
 }
 
@@ -128,11 +131,10 @@ function flushAnalysis() {
 
   if (!text || text === lastAnalyzedText || text.length < 8) return;
   lastAnalyzedText = text;
-
   analyzeText(text);
 }
 
-// ── Call /api/analyze ─────────────────────────────────────────────────────
+// ── Analyze ───────────────────────────────────────────────────────────────
 async function analyzeText(text) {
   try {
     const res = await fetch(`${serverUrl}/api/analyze`, {
@@ -142,10 +144,8 @@ async function analyzeText(text) {
     });
 
     if (!res.ok) return;
-
     const data = await res.json();
 
-    // Only forward if there's something worth surfacing
     if (data.battlecard || data.fitCard || data.coachingNote || data.scorecardUpdates) {
       chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', data, trigger: text });
     }
@@ -155,10 +155,8 @@ async function analyzeText(text) {
 // ── Stop recording ────────────────────────────────────────────────────────
 function stopRecording() {
   isRecording = false;
-
   if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
   if (maxTimer) { clearTimeout(maxTimer); maxTimer = null; }
-
   transcriptBuffer = '';
 
   if (mediaStream) {

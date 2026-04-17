@@ -1,6 +1,6 @@
-// Receives audio blobs from the Chrome extension, proxies to Deepgram,
-// returns the transcript text. Runs server-side so the API key is never
-// exposed to the extension code.
+// Receives audio blobs from the Chrome extension, transcribes via the
+// Shopify AI proxy (Whisper) — reuses the same key as /api/analyze,
+// no additional service or account needed.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,10 +13,12 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: Request) {
-  const apiKey = process.env.DEEPGRAM_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
+  const baseUrl = process.env.SHOPIFY_LLM_BASE_URL ?? "https://proxy.shopify.ai/v1";
+
   if (!apiKey) {
     return Response.json(
-      { error: "DEEPGRAM_API_KEY not set in .env.local" },
+      { error: "OPENAI_API_KEY not set in .env.local" },
       { status: 500, headers: CORS }
     );
   }
@@ -34,36 +36,33 @@ export async function POST(req: Request) {
   }
 
   try {
-    const arrayBuffer = await audio.arrayBuffer();
+    // Forward to Shopify AI proxy Whisper endpoint
+    const outForm = new FormData();
+    outForm.append("file", audio, "chunk.webm");
+    outForm.append("model", "whisper-1");
 
-    const dgRes = await fetch(
-      "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          "Content-Type": "audio/webm;codecs=opus",
-        },
-        body: arrayBuffer,
-      }
-    );
+    const res = await fetch(`${baseUrl}/audio/transcriptions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: outForm,
+    });
 
-    if (!dgRes.ok) {
-      const errText = await dgRes.text();
-      console.error("Deepgram error:", dgRes.status, errText);
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Whisper error:", res.status, errText);
       return Response.json(
-        { error: "Deepgram transcription failed" },
+        { error: "Transcription failed" },
         { status: 502, headers: CORS }
       );
     }
 
-    const data = await dgRes.json();
-    const transcript =
-      data.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
-    const confidence =
-      data.results?.channels?.[0]?.alternatives?.[0]?.confidence ?? 0;
+    const data = await res.json();
+    // Whisper returns { text: "..." }
+    const transcript = data.text?.trim() ?? "";
 
-    return Response.json({ transcript, confidence }, { headers: CORS });
+    return Response.json({ transcript }, { headers: CORS });
   } catch (e: unknown) {
     const err = e as { message?: string };
     console.error("Transcribe error:", err.message);

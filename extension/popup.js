@@ -20,7 +20,7 @@ serverUrlInput.addEventListener('change', () => {
   chrome.storage.local.set({ serverUrl: serverUrlInput.value.trim() });
 });
 
-// ── Detect if we're on a Meet tab ─────────────────────────────────────────
+// ── Detect Meet tab and check content script is injected ─────────────────
 chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   if (!tab?.url?.includes('meet.google.com')) {
     noMeetUI.style.display = 'block';
@@ -31,9 +31,21 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   currentTabId = tab.id;
   meetUI.style.display = 'block';
 
-  chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
-    isCapturing = res?.isCapturing || false;
-    updateUI();
+  // Ping content script to confirm it's injected in this tab
+  chrome.tabs.sendMessage(tab.id, { type: 'PING' }, (res) => {
+    if (chrome.runtime.lastError || !res?.pong) {
+      // Content script not present — tab was open before extension was loaded
+      showError('Please refresh your Google Meet tab, then re-open this popup.');
+      mainBtn.disabled = true;
+      statusText.textContent = 'Meet tab needs a refresh';
+      return;
+    }
+
+    // Content script is alive — check capture status
+    chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (bgRes) => {
+      isCapturing = bgRes?.isCapturing || false;
+      updateUI();
+    });
   });
 });
 
