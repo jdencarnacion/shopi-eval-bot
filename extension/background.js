@@ -57,6 +57,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       broadcastToMeet({ type: 'TRANSCRIPT_UPDATE', text: msg.text });
       break;
 
+    case 'TRANSCRIPT_ERROR':
+      broadcastToMeet({ type: 'TRANSCRIPT_ERROR', error: msg.error });
+      break;
+
     case 'ANALYSIS_RESULT':
       broadcastToMeet({ type: 'CARD_UPDATE', data: msg.data, trigger: msg.trigger });
       break;

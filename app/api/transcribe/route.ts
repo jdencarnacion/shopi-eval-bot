@@ -2,11 +2,7 @@
 // Shopify AI proxy (Whisper) — reuses the same key as /api/analyze,
 // no additional service or account needed.
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { CORS } from "@/lib/cors";
 
 export async function OPTIONS() {
   return new Response(null, { headers: CORS });

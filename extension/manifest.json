@@ -6,7 +6,9 @@
   "permissions": ["tabCapture", "offscreen", "storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://meet.google.com/*",
-    "http://localhost:3002/*"
+    "http://localhost:*/*",
+    "https://*/*",
+    "http://*/*"
   ],
   "background": {
     "service_worker": "background.js"

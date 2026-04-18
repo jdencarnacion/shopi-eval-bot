@@ -1,11 +1,6 @@
 import OpenAI from "openai";
 import { SYSTEM_PROMPT } from "@/lib/knowledge-base";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+import { CORS } from "@/lib/cors";
 
 export async function OPTIONS() {
   return new Response(null, { headers: CORS });
@@ -28,7 +23,7 @@ export async function POST(req: Request) {
   try {
     const completion = await client.chat.completions.create({
       model: "anthropic:claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 400,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: `Merchant just said: "${transcript}"` },
@@ -37,8 +32,15 @@ export async function POST(req: Request) {
 
     const text = completion.choices[0]?.message?.content ?? "";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const result = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-    return Response.json(result, { headers: CORS });
+    if (!jsonMatch) return Response.json(null, { headers: CORS });
+
+    try {
+      const result = JSON.parse(jsonMatch[0]);
+      return Response.json(result, { headers: CORS });
+    } catch {
+      console.error("JSON parse failed:", jsonMatch[0].slice(0, 200));
+      return Response.json(null, { headers: CORS });
+    }
   } catch (e: unknown) {
     const err = e as { message?: string; status?: number };
     console.error("Analyze error:", err.message, err.status);

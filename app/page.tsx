@@ -20,6 +20,7 @@ type Battlecard = {
   headline: string;
   keyPoints: string[];
   objectionResponse: string | null;
+  winRateNote: string | null;
 };
 
 type FitCard = {
@@ -85,6 +86,9 @@ function BattlecardView({ card }: { card: Battlecard }) {
     "BigCommerce": "#6b7ff5",
     "WooCommerce": "#7f54b3",
     "commercetools": "#a78bfa",
+    "SAP": "#f59e0b",
+    "VTEX": "#ec4899",
+    "Custom": "#6ee7b7",
   };
   const key = Object.keys(colors).find(k => card.competitor.includes(k));
   const accent = key ? colors[key] : "#7c3aed";
@@ -100,7 +104,12 @@ function BattlecardView({ card }: { card: Battlecard }) {
       <div style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
         ⚔ vs {card.competitor}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#e8e8f0", marginBottom: 10 }}>{card.headline}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#e8e8f0", marginBottom: 8 }}>{card.headline}</div>
+      {card.winRateNote && (
+        <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, display: "inline-block", padding: "3px 10px", marginBottom: 10 }}>
+          📊 {card.winRateNote}
+        </div>
+      )}
       <ul style={{ margin: 0, padding: "0 0 0 16px", display: "flex", flexDirection: "column", gap: 5 }}>
         {card.keyPoints.map((p, i) => (
           <li key={i} style={{ fontSize: 13, color: "#b0b0d0", lineHeight: 1.4 }}>{p}</li>

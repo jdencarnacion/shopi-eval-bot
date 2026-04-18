@@ -85,7 +85,7 @@ function recordNextChunk() {
   recorder.start();
   setTimeout(() => {
     if (recorder.state === 'recording') recorder.stop();
-  }, 2000);
+  }, 4000);
 }
 
 // ── Transcribe one chunk via Next.js → Whisper ───────────────────────────
@@ -99,7 +99,10 @@ async function transcribeChunk(blob) {
       body: form,
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      chrome.runtime.sendMessage({ type: 'TRANSCRIPT_ERROR', error: 'Server error (' + res.status + ')' });
+      return;
+    }
 
     const { transcript } = await res.json();
     if (!transcript || transcript.trim().length < 3) return;
@@ -109,7 +112,9 @@ async function transcribeChunk(blob) {
 
     chrome.runtime.sendMessage({ type: 'TRANSCRIPT_PARTIAL', text });
     scheduleAnalysis();
-  } catch (_) {}
+  } catch (_) {
+    chrome.runtime.sendMessage({ type: 'TRANSCRIPT_ERROR', error: 'Server unreachable' });
+  }
 }
 
 // ── Analysis scheduling ───────────────────────────────────────────────────
@@ -143,13 +148,18 @@ async function analyzeText(text) {
       body: JSON.stringify({ transcript: text }),
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      chrome.runtime.sendMessage({ type: 'TRANSCRIPT_ERROR', error: 'Analysis error (' + res.status + ')' });
+      return;
+    }
     const data = await res.json();
 
-    if (data.battlecard || data.fitCard || data.coachingNote || data.scorecardUpdates) {
+    if (data && (data.battlecard || data.fitCard || data.coachingNote || data.scorecardUpdates)) {
       chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', data, trigger: text });
     }
-  } catch (_) {}
+  } catch (_) {
+    chrome.runtime.sendMessage({ type: 'TRANSCRIPT_ERROR', error: 'Server unreachable' });
+  }
 }
 
 // ── Stop recording ────────────────────────────────────────────────────────

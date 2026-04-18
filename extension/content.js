@@ -12,15 +12,17 @@ const SCORECARD_ITEMS = [
 ];
 
 const COMPETITOR_COLORS = {
-  Salesforce:    { accent: '#00a1e0', glow: 'rgba(0,161,224,0.25)',  label: 'SFCC' },
-  Adobe:         { accent: '#ff5c5c', glow: 'rgba(255,92,92,0.25)',  label: 'Adobe' },
+  Salesforce:    { accent: '#00a1e0', glow: 'rgba(0,161,224,0.25)',   label: 'SFCC' },
+  Adobe:         { accent: '#ff5c5c', glow: 'rgba(255,92,92,0.25)',   label: 'Adobe' },
   BigCommerce:   { accent: '#7b7ff5', glow: 'rgba(123,127,245,0.25)', label: 'BigCommerce' },
-  WooCommerce:   { accent: '#9b59b6', glow: 'rgba(155,89,182,0.25)', label: 'WooCommerce' },
+  WooCommerce:   { accent: '#9b59b6', glow: 'rgba(155,89,182,0.25)',  label: 'WooCommerce' },
   commercetools: { accent: '#a78bfa', glow: 'rgba(167,139,250,0.25)', label: 'commercetools' },
-  SAP:           { accent: '#f59e0b', glow: 'rgba(245,158,11,0.25)', label: 'SAP' },
-  VTEX:          { accent: '#ec4899', glow: 'rgba(236,72,153,0.25)', label: 'VTEX' },
+  SAP:           { accent: '#f59e0b', glow: 'rgba(245,158,11,0.25)',  label: 'SAP' },
+  VTEX:          { accent: '#ec4899', glow: 'rgba(236,72,153,0.25)',  label: 'VTEX' },
   Custom:        { accent: '#6ee7b7', glow: 'rgba(110,231,183,0.25)', label: 'Custom Build' },
 };
+
+const VAULT_BASE = 'https://vault.shopify.com/search?query=';
 
 function getCompetitorStyle(competitor) {
   const key = Object.keys(COMPETITOR_COLORS).find((k) => competitor.includes(k));
@@ -33,14 +35,14 @@ let cards = [];
 let panelOpen = false;
 let isListening = false;
 
+const MAX_CARDS = 15;
+
 // ── Styles ────────────────────────────────────────────────────────────────
 const styleEl = document.createElement('style');
 styleEl.textContent = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
   #se-root * {
     box-sizing: border-box;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     margin: 0; padding: 0;
   }
 
@@ -144,7 +146,9 @@ styleEl.textContent = `
     color: rgba(255,255,255,0.25); font-style: italic; line-height: 1.5;
     background: transparent; border-bottom: 1px solid rgba(255,255,255,0.04);
     flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: color .2s;
   }
+  #se-transcript.se-error { color: #fbbf24; font-style: normal; }
 
   /* ── Cards feed ── */
   #se-cards {
@@ -187,7 +191,7 @@ styleEl.textContent = `
   .se-source-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
   .se-card-time { font-size: 10px; color: rgba(255,255,255,0.25); }
 
-  /* Dots row (decorative, like the screenshot) */
+  /* Dots row (decorative) */
   .se-dots { display: flex; gap: 4px; align-items: center; }
   .se-dot-dec { width: 7px; height: 7px; border-radius: 50%; }
 
@@ -428,6 +432,12 @@ function renderCards() {
   cards.forEach((card) => {
     const wrap = document.createElement('div');
 
+    // Dismiss removes the card from state and the DOM — no re-render needed
+    const onDismiss = () => {
+      cards = cards.filter((c) => c.id !== card.id);
+      wrap.remove();
+    };
+
     if (card.trigger) {
       const t = document.createElement('div');
       t.className = 'se-trigger';
@@ -436,9 +446,9 @@ function renderCards() {
     }
 
     if (card.type === 'battlecard' && card.battlecard) {
-      wrap.appendChild(buildBattlecard(card.battlecard));
+      wrap.appendChild(buildBattlecard(card.battlecard, onDismiss));
     } else if (card.type === 'fitcard' && card.fitCard) {
-      wrap.appendChild(buildFitCard(card.fitCard));
+      wrap.appendChild(buildFitCard(card.fitCard, onDismiss));
     } else if (card.type === 'coaching' && card.coachingNote) {
       wrap.appendChild(buildCoachingCard(card.coachingNote));
     }
@@ -454,13 +464,12 @@ function now() {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function buildBattlecard(bc) {
+function buildBattlecard(bc, onDismiss) {
   const style = getCompetitorStyle(bc.competitor);
 
   const card = document.createElement('div');
   card.className = 'se-card';
   card.style.boxShadow = `0 0 24px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`;
-  card.style.borderColor = `rgba(255,255,255,0.08)`;
 
   // Header row
   const header = document.createElement('div');
@@ -480,12 +489,13 @@ function buildBattlecard(bc) {
   header.appendChild(pill);
 
   const right = document.createElement('div');
-  right.style.display = 'flex'; right.style.alignItems = 'center'; right.style.gap = '8px';
+  right.style.display = 'flex';
+  right.style.alignItems = 'center';
+  right.style.gap = '8px';
 
-  // Decorative dots like screenshot
   const dots = document.createElement('div');
   dots.className = 'se-dots';
-  ['#ff5f57','#ffbd2e', style.accent].forEach((c) => {
+  ['#ff5f57', '#ffbd2e', style.accent].forEach((c) => {
     const d = document.createElement('div');
     d.className = 'se-dot-dec';
     d.style.background = c;
@@ -551,16 +561,19 @@ function buildBattlecard(bc) {
   // Action buttons
   const actions = document.createElement('div');
   actions.className = 'se-card-actions';
+
   const vaultBtn = document.createElement('button');
   vaultBtn.className = 'se-btn se-btn-primary';
   vaultBtn.innerHTML = '⊞ Vault';
+  vaultBtn.addEventListener('click', () => {
+    window.open(VAULT_BASE + encodeURIComponent(bc.competitor + ' battlecard'), '_blank');
+  });
+
   const dismissBtn = document.createElement('button');
   dismissBtn.className = 'se-btn se-btn-dismiss';
   dismissBtn.textContent = '✕ Dismiss';
-  dismissBtn.addEventListener('click', () => {
-    const wrap = card.closest('div');
-    if (wrap) wrap.remove();
-  });
+  dismissBtn.addEventListener('click', onDismiss);
+
   actions.appendChild(vaultBtn);
   actions.appendChild(dismissBtn);
   card.appendChild(actions);
@@ -568,7 +581,7 @@ function buildBattlecard(bc) {
   return card;
 }
 
-function buildFitCard(fc) {
+function buildFitCard(fc, onDismiss) {
   const card = document.createElement('div');
   card.className = 'se-card';
   card.style.boxShadow = '0 0 24px rgba(150,191,72,0.12), inset 0 1px 0 rgba(255,255,255,0.06)';
@@ -579,10 +592,13 @@ function buildFitCard(fc) {
 
   const pill = document.createElement('div');
   pill.className = 'se-source-pill';
-  pill.style.color = '#96bf48'; pill.style.borderColor = '#96bf4840'; pill.style.background = '#96bf4812';
+  pill.style.color = '#96bf48';
+  pill.style.borderColor = '#96bf4840';
+  pill.style.background = '#96bf4812';
   const dot = document.createElement('div');
   dot.className = 'se-source-dot';
-  dot.style.background = '#96bf48'; dot.style.boxShadow = '0 0 4px #96bf48';
+  dot.style.background = '#96bf48';
+  dot.style.boxShadow = '0 0 4px #96bf48';
   pill.appendChild(dot);
   pill.appendChild(document.createTextNode('Shopify Fit'));
   header.appendChild(pill);
@@ -625,10 +641,7 @@ function buildFitCard(fc) {
   const dismissBtn = document.createElement('button');
   dismissBtn.className = 'se-btn se-btn-dismiss';
   dismissBtn.textContent = '✕ Dismiss';
-  dismissBtn.addEventListener('click', () => {
-    const wrap = card.closest('div');
-    if (wrap) wrap.remove();
-  });
+  dismissBtn.addEventListener('click', onDismiss);
   actions.appendChild(dismissBtn);
   card.appendChild(actions);
 
@@ -643,10 +656,13 @@ function buildCoachingCard(note) {
   header.className = 'se-card-header';
   const pill = document.createElement('div');
   pill.className = 'se-source-pill';
-  pill.style.color = '#fbbf24'; pill.style.borderColor = '#fbbf2440'; pill.style.background = '#fbbf2408';
+  pill.style.color = '#fbbf24';
+  pill.style.borderColor = '#fbbf2440';
+  pill.style.background = '#fbbf2408';
   const dot = document.createElement('div');
   dot.className = 'se-source-dot';
-  dot.style.background = '#fbbf24'; dot.style.boxShadow = '0 0 4px #fbbf24';
+  dot.style.background = '#fbbf24';
+  dot.style.boxShadow = '0 0 4px #fbbf24';
   pill.appendChild(dot);
   pill.appendChild(document.createTextNode('Coaching'));
   header.appendChild(pill);
@@ -673,12 +689,30 @@ function buildCoachingCard(note) {
   return card;
 }
 
+// ── Transcript error helper ───────────────────────────────────────────────
+let errorTimer = null;
+function showTranscriptError(msg) {
+  const el = document.getElementById('se-transcript');
+  if (!el) return;
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('se-error');
+  if (errorTimer) clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => {
+    el.classList.remove('se-error');
+    el.textContent = isListening ? '' : 'Waiting for audio…';
+    errorTimer = null;
+  }, 4000);
+}
+
 // ── Message listener ──────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === 'PING') { sendResponse({ pong: true }); return false; }
+  if (msg.type === 'PING') {
+    sendResponse({ pong: true });
+    return false;
+  }
 
   switch (msg.type) {
-    case 'LISTENING_STARTED':
+    case 'LISTENING_STARTED': {
       isListening = true;
       document.getElementById('se-status-dot')?.classList.add('se-active');
       const st = document.getElementById('se-status-text');
@@ -687,38 +721,66 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       toggleBtn.classList.remove('se-alert');
       setPanel(true);
       break;
+    }
 
-    case 'LISTENING_STOPPED':
+    case 'LISTENING_STOPPED': {
       isListening = false;
       document.getElementById('se-status-dot')?.classList.remove('se-active');
-      const st2 = document.getElementById('se-status-text');
-      if (st2) st2.textContent = 'Stopped — click extension icon to resume';
+      const st = document.getElementById('se-status-text');
+      if (st) st.textContent = 'Stopped — click extension icon to resume';
       toggleBtn.classList.remove('se-listening');
       break;
+    }
 
     case 'TRANSCRIPT_UPDATE': {
       const el = document.getElementById('se-transcript');
-      if (el) el.textContent = msg.text;
+      if (el && !el.classList.contains('se-error')) el.textContent = msg.text;
+      break;
+    }
+
+    case 'TRANSCRIPT_ERROR': {
+      showTranscriptError(msg.error);
       break;
     }
 
     case 'CARD_UPDATE': {
       const { data, trigger } = msg;
+
       if (data.scorecardUpdates) {
         Object.entries(data.scorecardUpdates).forEach(([k, v]) => {
           if (v !== null && v !== undefined) scores[k] = v;
         });
       }
+
       const newCards = [];
+
       if (data.battlecard) {
-        const seen = cards.some(c => c.type === 'battlecard' && c.battlecard?.competitor === data.battlecard.competitor);
-        if (!seen) newCards.push({ id: Date.now()+'b', type: 'battlecard', trigger, battlecard: data.battlecard });
+        const seen = cards.some(
+          (c) => c.type === 'battlecard' && c.battlecard?.competitor === data.battlecard.competitor
+        );
+        if (!seen) {
+          newCards.push({ id: Date.now() + 'b', type: 'battlecard', trigger, battlecard: data.battlecard });
+        }
       }
-      if (data.fitCard) newCards.push({ id: Date.now()+'f', type: 'fitcard', trigger, fitCard: data.fitCard });
-      if (data.coachingNote && newCards.length === 0) newCards.push({ id: Date.now()+'c', type: 'coaching', trigger, coachingNote: data.coachingNote });
+
+      if (data.fitCard) {
+        const seen = cards.some(
+          (c) => c.type === 'fitcard' && c.fitCard?.painPoint === data.fitCard.painPoint
+        );
+        if (!seen) {
+          newCards.push({ id: Date.now() + 'f', type: 'fitcard', trigger, fitCard: data.fitCard });
+        }
+      }
+
+      if (data.coachingNote && newCards.length === 0) {
+        newCards.push({ id: Date.now() + 'c', type: 'coaching', trigger, coachingNote: data.coachingNote });
+      }
 
       if (newCards.length > 0) {
         cards = [...cards, ...newCards];
+        // Cap at MAX_CARDS, keeping the most recent
+        if (cards.length > MAX_CARDS) cards = cards.slice(cards.length - MAX_CARDS);
+
         if (panelOpen) {
           renderCards();
         } else {
@@ -731,6 +793,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }, 3000);
         }
       }
+
       if (panelOpen) renderScorecard();
       break;
     }
