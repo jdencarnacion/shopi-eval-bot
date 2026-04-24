@@ -69,10 +69,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 // ── Start capture ────────────────────────────────────────────────────────────
 async function handleStartCapture({ tabId, serverUrl }) {
-  if (isCapturing) await handleStopCapture();
   captureTabId = tabId;
+  pendingStartPayload = null;
 
-  // 1. Get the stream ID FIRST — it has a short validity window
+  // 1. Always tear down any existing offscreen document — never reuse.
+  //    Reusing risks sending START_RECORDING to an offscreen whose isRecording
+  //    is still true (stale state after service worker sleep), causing a silent no-op.
+  try {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+    });
+    if (contexts.length > 0) {
+      chrome.runtime.sendMessage({ type: 'STOP_RECORDING' }).catch(() => {});
+      await chrome.offscreen.closeDocument();
+    }
+  } catch (e) {
+    // Already closed or never existed — safe to continue
+    console.warn('Offscreen pre-cleanup:', e.message);
+  }
+  isCapturing = false;
+
+  // 2. Get the stream ID — must happen before createDocument (short validity window)
   const streamId = await new Promise((resolve, reject) => {
     chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (id) => {
       if (chrome.runtime.lastError) {
@@ -83,7 +100,7 @@ async function handleStartCapture({ tabId, serverUrl }) {
     });
   });
 
-  // 2. Store the payload so it can be sent once offscreen signals ready
+  // 3. Store payload, then create a fresh offscreen document
   pendingStartPayload = {
     type: 'START_RECORDING',
     streamId,
@@ -91,35 +108,20 @@ async function handleStartCapture({ tabId, serverUrl }) {
     serverUrl: serverUrl || 'http://localhost:3002',
   };
 
-  // 3. Create offscreen document (or reuse existing one)
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['USER_MEDIA'],
+    justification: 'Capture Google Meet tab audio for real-time transcription',
   });
-
-  if (contexts.length > 0) {
-    // Already exists — send immediately, it's already ready
-    const payload = pendingStartPayload;
-    pendingStartPayload = null;
-    chrome.runtime.sendMessage(payload).catch((e) => {
-      notifyPopup({ type: 'ERROR', error: e.message });
-    });
-  } else {
-    // Creating fresh — will send after OFFSCREEN_READY fires
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: ['USER_MEDIA'],
-      justification: 'Capture Google Meet tab audio for real-time transcription',
-    });
-    // pendingStartPayload will be sent when offscreen.js sends OFFSCREEN_READY
-    // Fallback: if OFFSCREEN_READY never arrives, send after 500ms
-    setTimeout(() => {
-      if (pendingStartPayload) {
-        const payload = pendingStartPayload;
-        pendingStartPayload = null;
-        chrome.runtime.sendMessage(payload).catch(() => {});
-      }
-    }, 500);
-  }
+  // pendingStartPayload sent when offscreen.js fires OFFSCREEN_READY.
+  // Fallback: if OFFSCREEN_READY never arrives within 800ms, send anyway.
+  setTimeout(() => {
+    if (pendingStartPayload) {
+      const payload = pendingStartPayload;
+      pendingStartPayload = null;
+      chrome.runtime.sendMessage(payload).catch(() => {});
+    }
+  }, 800);
 
   return { ok: true };
 }
@@ -129,13 +131,18 @@ async function handleStopCapture() {
   pendingStartPayload = null;
   chrome.runtime.sendMessage({ type: 'STOP_RECORDING' }).catch(() => {});
 
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
-  });
-  if (contexts.length > 0) {
-    await chrome.offscreen.closeDocument();
+  try {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+    });
+    if (contexts.length > 0) {
+      await chrome.offscreen.closeDocument();
+    }
+  } catch (e) {
+    console.warn('closeDocument on stop:', e.message);
   }
 
+  // Always reset state — even if closeDocument threw
   isCapturing = false;
   captureTabId = null;
 }
