@@ -35,9 +35,10 @@ chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
   chrome.tabs.sendMessage(tab.id, { type: 'PING' }, (res) => {
     if (chrome.runtime.lastError || !res?.pong) {
       // Content script not present — tab was open before extension was loaded
-      showError('Please refresh your Google Meet tab, then re-open this popup.');
+      showError('Refresh your Google Meet tab, then re-open this popup.');
       mainBtn.disabled = true;
       statusText.textContent = 'Meet tab needs a refresh';
+      statusText.classList.remove('active');
       return;
     }
 
@@ -56,13 +57,15 @@ function updateUI() {
 
   if (isCapturing) {
     dot.classList.add('active');
-    statusText.textContent = 'Listening to call...';
-    mainBtn.textContent = '■ Stop Listening';
+    statusText.textContent = 'Listening to call…';
+    statusText.classList.add('active');
+    mainBtn.textContent = '■  Stop Listening';
     mainBtn.className = 'btn btn-stop';
   } else {
     dot.classList.remove('active');
     statusText.textContent = 'Ready — on Google Meet';
-    mainBtn.textContent = '▶ Start Listening';
+    statusText.classList.remove('active');
+    mainBtn.textContent = '▶  Start Listening';
     mainBtn.className = 'btn btn-start';
   }
 }

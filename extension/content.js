@@ -12,21 +12,21 @@ const SCORECARD_ITEMS = [
 ];
 
 const COMPETITOR_COLORS = {
-  Salesforce:    { accent: '#00a1e0', glow: 'rgba(0,161,224,0.25)',   label: 'SFCC' },
-  Adobe:         { accent: '#ff5c5c', glow: 'rgba(255,92,92,0.25)',   label: 'Adobe' },
-  BigCommerce:   { accent: '#7b7ff5', glow: 'rgba(123,127,245,0.25)', label: 'BigCommerce' },
-  WooCommerce:   { accent: '#9b59b6', glow: 'rgba(155,89,182,0.25)',  label: 'WooCommerce' },
-  commercetools: { accent: '#a78bfa', glow: 'rgba(167,139,250,0.25)', label: 'commercetools' },
-  SAP:           { accent: '#f59e0b', glow: 'rgba(245,158,11,0.25)',  label: 'SAP' },
-  VTEX:          { accent: '#ec4899', glow: 'rgba(236,72,153,0.25)',  label: 'VTEX' },
-  Custom:        { accent: '#6ee7b7', glow: 'rgba(110,231,183,0.25)', label: 'Custom Build' },
+  Salesforce:    { accent: '#38bdf8', glow: 'rgba(56,189,248,0.18)',   label: 'Salesforce CC' },
+  Adobe:         { accent: '#f87171', glow: 'rgba(248,113,113,0.18)',  label: 'Adobe Commerce' },
+  BigCommerce:   { accent: '#818cf8', glow: 'rgba(129,140,248,0.18)',  label: 'BigCommerce' },
+  WooCommerce:   { accent: '#c084fc', glow: 'rgba(192,132,252,0.18)',  label: 'WooCommerce' },
+  commercetools: { accent: '#a78bfa', glow: 'rgba(167,139,250,0.18)',  label: 'commercetools' },
+  SAP:           { accent: '#fb923c', glow: 'rgba(251,146,60,0.18)',   label: 'SAP Commerce' },
+  VTEX:          { accent: '#f472b6', glow: 'rgba(244,114,182,0.18)',  label: 'VTEX' },
+  Custom:        { accent: '#34d399', glow: 'rgba(52,211,153,0.18)',   label: 'Custom Build' },
 };
 
 const VAULT_BASE = 'https://vault.shopify.com/search?query=';
 
 function getCompetitorStyle(competitor) {
   const key = Object.keys(COMPETITOR_COLORS).find((k) => competitor.includes(k));
-  return key ? COMPETITOR_COLORS[key] : { accent: '#7c3aed', glow: 'rgba(124,58,237,0.25)', label: competitor };
+  return key ? COMPETITOR_COLORS[key] : { accent: '#94a3b8', glow: 'rgba(148,163,184,0.15)', label: competitor };
 }
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -34,7 +34,6 @@ let scores = Object.fromEntries(SCORECARD_ITEMS.map((i) => [i.key, 0]));
 let cards = [];
 let panelOpen = false;
 let isListening = false;
-
 const MAX_CARDS = 15;
 
 // ── Styles ────────────────────────────────────────────────────────────────
@@ -44,293 +43,322 @@ styleEl.textContent = `
     box-sizing: border-box;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     margin: 0; padding: 0;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* ── Toggle button ── */
+  /* ── Toggle button ─────────────────────────────────────────────────── */
   #se-toggle {
-    position: fixed; right: 18px; bottom: 88px; z-index: 2147483646;
-    width: 48px; height: 48px; border-radius: 50%;
-    background: linear-gradient(135deg, #1a2a1a, #2d4a1e);
-    border: 1px solid rgba(110,231,155,0.4);
-    box-shadow: 0 0 16px rgba(110,231,155,0.3), 0 4px 20px rgba(0,0,0,0.6);
+    position: fixed; right: 20px; bottom: 92px; z-index: 2147483646;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: rgba(8, 20, 12, 0.88);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(74,222,128,0.28);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 20px; transition: transform .2s, box-shadow .2s;
-    color: #fff;
+    font-size: 22px;
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s;
   }
-  #se-toggle:hover { transform: scale(1.1); box-shadow: 0 0 28px rgba(110,231,155,0.5), 0 4px 24px rgba(0,0,0,0.7); }
+  #se-toggle:hover {
+    transform: scale(1.1);
+    border-color: rgba(74,222,128,0.55);
+    box-shadow: 0 0 24px rgba(74,222,128,0.2), 0 8px 32px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
   #se-toggle.se-listening {
-    background: linear-gradient(135deg, #166534, #15803d);
-    border-color: rgba(74,222,128,0.6);
-    animation: se-toggle-pulse 2.5s ease-in-out infinite;
+    background: rgba(10, 28, 12, 0.92);
+    border-color: rgba(74,222,128,0.7);
+    animation: se-ring 2.4s ease-in-out infinite;
   }
   #se-toggle.se-alert {
-    background: linear-gradient(135deg, #78350f, #b45309);
-    border-color: rgba(251,191,36,0.6);
-    animation: se-toggle-pulse-amber 1s ease-in-out infinite;
+    background: rgba(30, 20, 5, 0.92);
+    border-color: rgba(251,191,36,0.7);
+    animation: se-ring-amber 1s ease-in-out infinite;
   }
-  @keyframes se-toggle-pulse {
-    0%,100% { box-shadow: 0 0 16px rgba(74,222,128,0.4), 0 4px 20px rgba(0,0,0,0.6); }
-    50%      { box-shadow: 0 0 32px rgba(74,222,128,0.7), 0 4px 24px rgba(0,0,0,0.7); }
+  @keyframes se-ring {
+    0%,100% { box-shadow: 0 0 0 3px rgba(74,222,128,0.1), 0 0 20px rgba(74,222,128,0.2), 0 8px 32px rgba(0,0,0,0.6); }
+    50%      { box-shadow: 0 0 0 7px rgba(74,222,128,0.05), 0 0 36px rgba(74,222,128,0.32), 0 8px 32px rgba(0,0,0,0.6); }
   }
-  @keyframes se-toggle-pulse-amber {
-    0%,100% { box-shadow: 0 0 16px rgba(251,191,36,0.4), 0 4px 20px rgba(0,0,0,0.6); }
-    50%      { box-shadow: 0 0 32px rgba(251,191,36,0.7), 0 4px 24px rgba(0,0,0,0.7); }
+  @keyframes se-ring-amber {
+    0%,100% { box-shadow: 0 0 0 3px rgba(251,191,36,0.1), 0 0 20px rgba(251,191,36,0.2), 0 8px 32px rgba(0,0,0,0.6); }
+    50%      { box-shadow: 0 0 0 7px rgba(251,191,36,0.05), 0 0 32px rgba(251,191,36,0.35), 0 8px 32px rgba(0,0,0,0.6); }
   }
 
-  /* ── Panel ── */
+  /* ── Panel ─────────────────────────────────────────────────────────── */
   #se-panel {
     position: fixed; right: 0; top: 0; bottom: 0; z-index: 2147483645;
-    width: 360px;
-    background: linear-gradient(180deg, #0c0c18 0%, #0a0a14 100%);
+    width: 372px;
+    background: linear-gradient(160deg, rgba(12,12,32,0.97) 0%, rgba(6,6,18,0.98) 100%);
+    backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
     border-left: 1px solid rgba(255,255,255,0.07);
+    box-shadow: -24px 0 60px rgba(0,0,0,0.5);
     display: flex; flex-direction: column; overflow: hidden;
-    transform: translateX(100%); transition: transform .28s cubic-bezier(.4,0,.2,1);
+    transform: translateX(100%);
+    transition: transform 0.36s cubic-bezier(0.32, 0.72, 0, 1);
   }
   #se-panel.se-open { transform: translateX(0); }
 
-  /* ── Header ── */
+  /* ── Header ─────────────────────────────────────────────────────────── */
   #se-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px 12px;
-    background: rgba(255,255,255,0.03);
+    padding: 15px 16px 13px;
+    background: rgba(255,255,255,0.025);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     flex-shrink: 0;
   }
-  #se-header-left { display: flex; align-items: center; gap: 8px; }
+  #se-header-left { display: flex; align-items: center; gap: 10px; }
   .se-logo {
-    width: 28px; height: 28px; border-radius: 8px;
-    background: linear-gradient(135deg, #166534, #15803d);
-    border: 1px solid rgba(74,222,128,0.3);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    box-shadow: 0 0 10px rgba(74,222,128,0.2);
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(135deg, #14532d, #166534);
+    border: 1px solid rgba(74,222,128,0.25);
+    box-shadow: 0 0 14px rgba(74,222,128,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
   }
-  .se-title { font-size: 13px; font-weight: 700; color: #f0f0ff; letter-spacing: -.01em; }
-  .se-badge {
-    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.35);
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-    padding: 2px 7px; border-radius: 20px; letter-spacing: .02em;
+  .se-title { font-size: 13px; font-weight: 700; color: #f0f0ff; letter-spacing: -0.02em; }
+  .se-live-pill {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+    background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25);
+    color: #4ade80; opacity: 0; transition: opacity 0.3s;
   }
-  #se-close-btn {
-    background: none; border: none; color: rgba(255,255,255,0.3);
-    cursor: pointer; font-size: 16px; line-height: 1;
-    width: 26px; height: 26px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    transition: background .15s, color .15s;
-  }
-  #se-close-btn:hover { background: rgba(255,255,255,0.08); color: #f0f0ff; }
-
-  /* ── Status bar ── */
-  #se-status {
-    display: flex; align-items: center; gap: 7px;
-    padding: 8px 16px;
-    background: rgba(255,255,255,0.02);
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    flex-shrink: 0; font-size: 11px; color: rgba(255,255,255,0.35);
-    font-weight: 500;
-  }
-  #se-status-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: rgba(255,255,255,0.15); flex-shrink: 0;
-  }
-  #se-status-dot.se-active {
-    background: #4ade80;
+  .se-live-pill.se-visible { opacity: 1; }
+  .se-live-dot {
+    width: 5px; height: 5px; border-radius: 50%; background: #4ade80;
     box-shadow: 0 0 6px rgba(74,222,128,0.8);
-    animation: se-dot-pulse 1.8s ease-in-out infinite;
+    animation: se-dot-blink 1.6s ease-in-out infinite;
   }
-  @keyframes se-dot-pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
-
-  /* ── Transcript ticker ── */
-  #se-transcript {
-    padding: 6px 16px; min-height: 28px; font-size: 11px;
-    color: rgba(255,255,255,0.25); font-style: italic; line-height: 1.5;
-    background: transparent; border-bottom: 1px solid rgba(255,255,255,0.04);
-    flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    transition: color .2s;
+  @keyframes se-dot-blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+  #se-close-btn {
+    background: none; border: none; color: rgba(255,255,255,0.25);
+    cursor: pointer; width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: background 0.15s, color 0.15s;
   }
-  #se-transcript.se-error { color: #fbbf24; font-style: normal; }
+  #se-close-btn:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
 
-  /* ── Cards feed ── */
+  /* ── Transcript bar ──────────────────────────────────────────────────── */
+  #se-transcript-bar {
+    padding: 8px 16px; min-height: 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.01);
+    flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  }
+  #se-transcript-icon { font-size: 11px; opacity: 0.3; flex-shrink: 0; }
+  #se-transcript-text {
+    font-size: 11px; color: rgba(255,255,255,0.22); font-style: italic;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; line-height: 1.4; transition: color 0.2s;
+  }
+  #se-transcript-text.se-error { color: #fbbf24; font-style: normal; }
+
+  /* ── Cards feed ──────────────────────────────────────────────────────── */
   #se-cards {
-    flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    flex: 1; overflow-y: auto; padding: 14px 12px;
+    display: flex; flex-direction: column; gap: 10px;
   }
   #se-cards::-webkit-scrollbar { width: 3px; }
   #se-cards::-webkit-scrollbar-track { background: transparent; }
-  #se-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  #se-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 
+  /* ── Empty state ─────────────────────────────────────────────────────── */
   .se-empty {
     display: flex; flex-direction: column; align-items: center;
-    justify-content: center; height: 100%; gap: 10px; text-align: center;
-    padding: 20px;
+    justify-content: center; height: 100%; gap: 12px; text-align: center; padding: 24px;
   }
-  .se-empty-icon { font-size: 32px; opacity: .6; }
-  .se-empty-title { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.3); }
-  .se-empty-desc { font-size: 11px; color: rgba(255,255,255,0.18); max-width: 230px; line-height: 1.7; }
+  .se-empty-orb {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.12);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  .se-empty-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.25); }
+  .se-empty-desc { font-size: 12px; color: rgba(255,255,255,0.14); max-width: 220px; line-height: 1.8; }
 
-  /* ── Card chrome ── */
+  /* ── Trigger quote ───────────────────────────────────────────────────── */
+  .se-trigger {
+    font-size: 10.5px; color: rgba(255,255,255,0.18); font-style: italic;
+    margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 0 3px;
+  }
+
+  /* ── Card ────────────────────────────────────────────────────────────── */
   .se-card {
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.07);
     overflow: hidden;
-    background: rgba(255,255,255,0.03);
-    transition: box-shadow .2s;
+    background: rgba(255,255,255,0.028);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    animation: se-card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.15s ease;
+  }
+  .se-card:hover { transform: translateY(-1px); }
+  @keyframes se-card-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Source pill row */
-  .se-card-header {
+  /* Colored accent line at top of each card */
+  .se-card-accent { height: 2px; width: 100%; }
+
+  /* Card meta row */
+  .se-card-meta {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 12px 0;
+    padding: 10px 14px 0;
   }
   .se-source-pill {
     display: flex; align-items: center; gap: 5px;
-    font-size: 10px; font-weight: 700; letter-spacing: .06em;
-    text-transform: uppercase;
-    padding: 2px 8px; border-radius: 20px;
-    border: 1px solid; opacity: .9;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 9px; border-radius: 20px; border: 1px solid;
   }
   .se-source-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-  .se-card-time { font-size: 10px; color: rgba(255,255,255,0.25); }
-
-  /* Dots row (decorative) */
-  .se-dots { display: flex; gap: 4px; align-items: center; }
-  .se-dot-dec { width: 7px; height: 7px; border-radius: 50%; }
+  .se-card-time { font-size: 10px; color: rgba(255,255,255,0.2); letter-spacing: 0.01em; }
 
   /* Card body */
-  .se-card-body { padding: 10px 12px 12px; }
-
-  /* Summary label */
-  .se-summary-label {
-    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: rgba(255,255,255,0.3); margin-bottom: 5px;
+  .se-card-body { padding: 11px 14px 13px; }
+  .se-card-type-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.25); margin-bottom: 6px;
   }
-
-  /* Headline */
   .se-card-headline {
-    font-size: 13px; font-weight: 700; color: #f0f0ff; line-height: 1.4;
-    margin-bottom: 8px; letter-spacing: -.01em;
+    font-size: 14px; font-weight: 700; color: #f0f0ff; line-height: 1.4;
+    margin-bottom: 10px; letter-spacing: -0.02em;
+  }
+  .se-card-body-text {
+    font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.7; margin-bottom: 4px;
   }
 
-  /* Body text */
-  .se-card-text {
-    font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.65;
-    margin-bottom: 2px;
-  }
-
-  /* Points */
-  .se-points { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-  .se-point {
-    font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.5;
-    display: flex; gap: 6px; align-items: flex-start;
-  }
-  .se-point::before { content: '—'; color: rgba(255,255,255,0.2); flex-shrink: 0; }
-
-  /* Win rate badge */
+  /* Win badge */
   .se-win-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 10px; font-weight: 600;
-    padding: 3px 8px; border-radius: 20px; margin-bottom: 10px;
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.45);
-    background: rgba(255,255,255,0.04);
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+    padding: 4px 10px; border-radius: 8px; margin-bottom: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+    color: rgba(255,255,255,0.4);
   }
 
-  /* Action buttons */
-  .se-card-actions {
-    display: flex; gap: 7px; padding: 0 12px 12px;
+  /* Key points */
+  .se-points { list-style: none; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .se-point {
+    font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.55;
+    display: flex; gap: 8px; align-items: flex-start;
   }
-  .se-btn {
-    flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid;
-    cursor: pointer; font-size: 11px; font-weight: 600;
-    display: flex; align-items: center; justify-content: center; gap: 5px;
-    transition: opacity .15s, transform .1s; letter-spacing: .01em;
-  }
-  .se-btn:hover { opacity: .85; transform: translateY(-1px); }
-  .se-btn:active { transform: translateY(0); }
-  .se-btn-primary {
-    background: rgba(74,222,128,0.15); border-color: rgba(74,222,128,0.35);
-    color: #4ade80;
-  }
-  .se-btn-dismiss {
-    background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.35);
+  .se-point-bullet {
+    width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.06); font-size: 8px; color: rgba(255,255,255,0.3);
   }
 
   /* Rebuttal box */
   .se-rebuttal {
-    margin: 8px 0 0;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px; padding: 10px 11px;
+    margin-top: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 11px 13px;
   }
   .se-rebuttal-label {
-    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: rgba(255,255,255,0.3); margin-bottom: 5px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: rgba(255,255,255,0.25); margin-bottom: 6px;
   }
-  .se-rebuttal-text { font-size: 12px; color: rgba(150,220,120,0.9); line-height: 1.6; }
+  .se-rebuttal-text { font-size: 12px; color: rgba(134,211,105,0.9); line-height: 1.65; }
 
   /* Fit card stat */
   .se-stat {
-    margin-top: 8px; padding: 7px 10px; border-radius: 8px;
-    font-size: 11px; font-weight: 600;
-    background: rgba(150,191,72,0.08); border: 1px solid rgba(150,191,72,0.2);
-    color: rgba(150,191,72,0.9);
+    margin-top: 10px; padding: 8px 11px; border-radius: 9px;
+    font-size: 11.5px; font-weight: 600;
+    background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15);
+    color: rgba(74,222,128,0.85);
   }
 
   /* Coaching card */
   .se-coaching-card {
-    border-radius: 12px; overflow: hidden;
-    border: 1px solid rgba(251,191,36,0.2);
-    background: rgba(251,191,36,0.04);
-    box-shadow: 0 0 20px rgba(251,191,36,0.08);
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(251,191,36,0.15);
+    background: rgba(251,191,36,0.03);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 0 30px rgba(251,191,36,0.06);
+    animation: se-card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* ── Trigger label ── */
-  .se-trigger {
-    font-size: 10px; color: rgba(255,255,255,0.2); font-style: italic;
-    margin-bottom: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    padding: 0 2px;
+  /* Action buttons */
+  .se-card-actions { display: flex; gap: 8px; padding: 0 14px 14px; }
+  .se-btn {
+    flex: 1; padding: 8px 12px; border-radius: 10px; border: 1px solid;
+    cursor: pointer; font-size: 11.5px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+  }
+  .se-btn:hover { transform: translateY(-1px); }
+  .se-btn:active { transform: translateY(0); }
+  .se-btn-vault {
+    background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.22); color: #4ade80;
+  }
+  .se-btn-vault:hover {
+    background: rgba(74,222,128,0.18); border-color: rgba(74,222,128,0.38);
+    box-shadow: 0 4px 14px rgba(74,222,128,0.12);
+  }
+  .se-btn-dismiss {
+    background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.28);
+  }
+  .se-btn-dismiss:hover {
+    background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.5);
   }
 
-  /* ── Scorecard ── */
+  /* ── Scorecard ───────────────────────────────────────────────────────── */
   #se-scorecard {
-    flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06);
-    background: rgba(255,255,255,0.02); max-height: 230px; overflow-y: auto;
+    flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.015); max-height: 220px; overflow-y: auto;
   }
-  #se-scorecard::-webkit-scrollbar { width: 3px; }
-  #se-scorecard::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+  #se-scorecard::-webkit-scrollbar { width: 2px; }
+  #se-scorecard::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); }
   #se-score-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 16px 6px;
+    padding: 11px 16px 8px;
   }
   .se-score-section-label {
-    font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: rgba(255,255,255,0.25);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
   }
-  #se-score-summary { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); }
+  #se-score-total {
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.6); letter-spacing: -0.01em;
+  }
   .se-score-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 5px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 16px;
   }
-  .se-score-name { font-size: 11px; font-weight: 500; width: 80px; flex-shrink: 0; color: rgba(255,255,255,0.3); }
-  .se-score-name.se-qualified { color: rgba(255,255,255,0.8); }
-  .se-score-bars { display: flex; gap: 3px; }
-  .se-bar {
-    width: 14px; height: 14px; border-radius: 3px;
-    background: rgba(255,255,255,0.06); cursor: pointer;
-    transition: background .1s, transform .1s; border: 1px solid rgba(255,255,255,0.05);
+  .se-score-name {
+    font-size: 11px; font-weight: 500; width: 76px; flex-shrink: 0;
+    color: rgba(255,255,255,0.25); letter-spacing: -0.01em;
+    transition: color 0.2s;
   }
-  .se-bar:hover { transform: scale(1.15); }
-  .se-bar.se-green  { background: #4ade80; border-color: rgba(74,222,128,0.5); box-shadow: 0 0 6px rgba(74,222,128,0.4); }
-  .se-bar.se-yellow { background: #fbbf24; border-color: rgba(251,191,36,0.5); }
-  .se-bar.se-red    { background: #f87171; border-color: rgba(248,113,113,0.5); }
+  .se-score-name.se-active { color: rgba(255,255,255,0.7); }
+  .se-score-track {
+    flex: 1; display: flex; gap: 3px;
+  }
+  .se-score-seg {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    cursor: pointer; transition: transform 0.1s, background 0.15s;
+  }
+  .se-score-seg:hover { transform: scaleY(1.5); }
+  .se-score-seg.se-filled-green { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.45); }
+  .se-score-seg.se-filled-yellow { background: #fbbf24; }
+  .se-score-seg.se-filled-red { background: #f87171; }
+  .se-score-val {
+    font-size: 10px; font-weight: 600; width: 18px; text-align: right; flex-shrink: 0;
+    color: rgba(255,255,255,0.2); transition: color 0.2s;
+  }
+  .se-score-val.se-active { color: rgba(255,255,255,0.55); }
 `;
 document.head.appendChild(styleEl);
 
-// ── Build DOM ─────────────────────────────────────────────────────────────
+// ── DOM ───────────────────────────────────────────────────────────────────
 const root = document.createElement('div');
 root.id = 'se-root';
 document.body.appendChild(root);
 
+// Toggle button
 const toggleBtn = document.createElement('button');
 toggleBtn.id = 'se-toggle';
 toggleBtn.innerHTML = '🎯';
@@ -338,6 +366,7 @@ toggleBtn.title = 'Shopi Eval Bot';
 toggleBtn.addEventListener('click', () => setPanel(!panelOpen));
 root.appendChild(toggleBtn);
 
+// Panel
 const panel = document.createElement('div');
 panel.id = 'se-panel';
 panel.innerHTML = `
@@ -345,20 +374,24 @@ panel.innerHTML = `
     <div id="se-header-left">
       <div class="se-logo">🎯</div>
       <span class="se-title">Shopi Eval Bot</span>
-      <span class="se-badge">Discovery</span>
     </div>
-    <button id="se-close-btn">✕</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="se-live-pill" id="se-live-pill">
+        <div class="se-live-dot"></div>
+        <span>Live</span>
+      </div>
+      <button id="se-close-btn">✕</button>
+    </div>
   </div>
-  <div id="se-status">
-    <div id="se-status-dot"></div>
-    <span id="se-status-text">Not listening — click extension icon to start</span>
+  <div id="se-transcript-bar">
+    <span id="se-transcript-icon">◎</span>
+    <span id="se-transcript-text">Waiting for audio…</span>
   </div>
-  <div id="se-transcript">Waiting for audio…</div>
   <div id="se-cards"></div>
   <div id="se-scorecard">
     <div id="se-score-header">
-      <span class="se-score-section-label">Qualification</span>
-      <span id="se-score-summary">0 / 8</span>
+      <span class="se-score-section-label">Qualification Score</span>
+      <span id="se-score-total">0 / 8</span>
     </div>
     <div id="se-score-rows"></div>
   </div>
@@ -376,7 +409,7 @@ function setPanel(open) {
 // ── Scorecard ─────────────────────────────────────────────────────────────
 function renderScorecard() {
   const rowsEl = document.getElementById('se-score-rows');
-  const summaryEl = document.getElementById('se-score-summary');
+  const totalEl = document.getElementById('se-score-total');
   if (!rowsEl) return;
 
   rowsEl.innerHTML = '';
@@ -390,26 +423,34 @@ function renderScorecard() {
     row.className = 'se-score-row';
 
     const nameEl = document.createElement('span');
-    nameEl.className = 'se-score-name' + (score >= 3 ? ' se-qualified' : '');
+    nameEl.className = 'se-score-name' + (score >= 3 ? ' se-active' : '');
     nameEl.textContent = label;
     row.appendChild(nameEl);
 
-    const barsEl = document.createElement('div');
-    barsEl.className = 'se-score-bars';
+    const track = document.createElement('div');
+    track.className = 'se-score-track';
     [1,2,3,4,5].forEach((v) => {
-      const bar = document.createElement('div');
-      bar.className = 'se-bar';
-      if (v <= score) bar.classList.add(score >= 4 ? 'se-green' : score >= 2 ? 'se-yellow' : 'se-red');
-      bar.addEventListener('click', () => { scores[key] = v; renderScorecard(); });
-      barsEl.appendChild(bar);
+      const seg = document.createElement('div');
+      seg.className = 'se-score-seg';
+      if (v <= score) {
+        seg.classList.add(score >= 4 ? 'se-filled-green' : score >= 2 ? 'se-filled-yellow' : 'se-filled-red');
+      }
+      seg.addEventListener('click', () => { scores[key] = v; renderScorecard(); });
+      track.appendChild(seg);
     });
-    row.appendChild(barsEl);
+    row.appendChild(track);
+
+    const valEl = document.createElement('span');
+    valEl.className = 'se-score-val' + (score > 0 ? ' se-active' : '');
+    valEl.textContent = score > 0 ? score : '—';
+    row.appendChild(valEl);
+
     rowsEl.appendChild(row);
   });
 
-  if (summaryEl) {
-    summaryEl.textContent = `${qualified} / 8`;
-    summaryEl.style.color = qualified >= 6 ? '#4ade80' : qualified >= 4 ? '#fbbf24' : 'rgba(255,255,255,0.7)';
+  if (totalEl) {
+    totalEl.textContent = `${qualified} / 8`;
+    totalEl.style.color = qualified >= 6 ? '#4ade80' : qualified >= 4 ? '#fbbf24' : 'rgba(255,255,255,0.6)';
   }
 }
 
@@ -421,9 +462,9 @@ function renderCards() {
   if (cards.length === 0) {
     cardsEl.innerHTML = `
       <div class="se-empty">
-        <div class="se-empty-icon">🎯</div>
+        <div class="se-empty-orb">🎯</div>
         <div class="se-empty-title">Listening for signals</div>
-        <div class="se-empty-desc">Competitor mentions surface battlecards. Pain points surface Shopify fit cards.</div>
+        <div class="se-empty-desc">Competitor names surface battlecards. Pain points surface Shopify fit cards.</div>
       </div>`;
     return;
   }
@@ -432,7 +473,6 @@ function renderCards() {
   cards.forEach((card) => {
     const wrap = document.createElement('div');
 
-    // Dismiss removes the card from state and the DOM — no re-render needed
     const onDismiss = () => {
       cards = cards.filter((c) => c.id !== card.id);
       wrap.remove();
@@ -459,66 +499,55 @@ function renderCards() {
   cardsEl.scrollTop = cardsEl.scrollHeight;
 }
 
-function now() {
-  const d = new Date();
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+// ── Card builders ─────────────────────────────────────────────────────────
 function buildBattlecard(bc, onDismiss) {
   const style = getCompetitorStyle(bc.competitor);
 
   const card = document.createElement('div');
   card.className = 'se-card';
-  card.style.boxShadow = `0 0 24px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`;
+  card.style.boxShadow = `0 0 0 1px ${style.glow.replace('0.18', '0.35')}, 0 4px 28px ${style.glow}, inset 0 1px 0 rgba(255,255,255,0.05)`;
 
-  // Header row
-  const header = document.createElement('div');
-  header.className = 'se-card-header';
+  // Colored accent line
+  const accent = document.createElement('div');
+  accent.className = 'se-card-accent';
+  accent.style.background = `linear-gradient(90deg, ${style.accent}, transparent)`;
+  card.appendChild(accent);
+
+  // Meta row
+  const meta = document.createElement('div');
+  meta.className = 'se-card-meta';
 
   const pill = document.createElement('div');
   pill.className = 'se-source-pill';
   pill.style.color = style.accent;
-  pill.style.borderColor = style.accent + '40';
-  pill.style.background = style.accent + '12';
+  pill.style.borderColor = style.accent + '35';
+  pill.style.background = style.accent + '10';
   const dot = document.createElement('div');
   dot.className = 'se-source-dot';
   dot.style.background = style.accent;
-  dot.style.boxShadow = `0 0 4px ${style.accent}`;
+  dot.style.boxShadow = `0 0 5px ${style.accent}`;
   pill.appendChild(dot);
   pill.appendChild(document.createTextNode(style.label));
-  header.appendChild(pill);
-
-  const right = document.createElement('div');
-  right.style.display = 'flex';
-  right.style.alignItems = 'center';
-  right.style.gap = '8px';
-
-  const dots = document.createElement('div');
-  dots.className = 'se-dots';
-  ['#ff5f57', '#ffbd2e', style.accent].forEach((c) => {
-    const d = document.createElement('div');
-    d.className = 'se-dot-dec';
-    d.style.background = c;
-    d.style.boxShadow = `0 0 4px ${c}80`;
-    dots.appendChild(d);
-  });
-  right.appendChild(dots);
+  meta.appendChild(pill);
 
   const time = document.createElement('span');
   time.className = 'se-card-time';
-  time.textContent = now();
-  right.appendChild(time);
-  header.appendChild(right);
-  card.appendChild(header);
+  time.textContent = nowTime();
+  meta.appendChild(time);
+  card.appendChild(meta);
 
   // Body
   const body = document.createElement('div');
   body.className = 'se-card-body';
 
-  const summaryLabel = document.createElement('div');
-  summaryLabel.className = 'se-summary-label';
-  summaryLabel.textContent = 'BATTLECARD';
-  body.appendChild(summaryLabel);
+  const typeLabel = document.createElement('div');
+  typeLabel.className = 'se-card-type-label';
+  typeLabel.textContent = 'Battlecard';
+  body.appendChild(typeLabel);
 
   const headline = document.createElement('div');
   headline.className = 'se-card-headline';
@@ -528,7 +557,7 @@ function buildBattlecard(bc, onDismiss) {
   if (bc.winRateNote) {
     const badge = document.createElement('div');
     badge.className = 'se-win-badge';
-    badge.textContent = '📊 ' + bc.winRateNote;
+    badge.innerHTML = `<span style="opacity:0.6">📊</span> ${bc.winRateNote}`;
     body.appendChild(badge);
   }
 
@@ -537,6 +566,10 @@ function buildBattlecard(bc, onDismiss) {
   (bc.keyPoints || []).forEach((p) => {
     const li = document.createElement('li');
     li.className = 'se-point';
+    const bullet = document.createElement('div');
+    bullet.className = 'se-point-bullet';
+    bullet.textContent = '→';
+    li.appendChild(bullet);
     li.appendChild(document.createTextNode(p));
     pts.appendChild(li);
   });
@@ -547,7 +580,7 @@ function buildBattlecard(bc, onDismiss) {
     rb.className = 'se-rebuttal';
     const lbl = document.createElement('div');
     lbl.className = 'se-rebuttal-label';
-    lbl.textContent = 'SUGGESTED RESPONSE';
+    lbl.textContent = 'Suggested response';
     rb.appendChild(lbl);
     const txt = document.createElement('div');
     txt.className = 'se-rebuttal-text';
@@ -558,12 +591,12 @@ function buildBattlecard(bc, onDismiss) {
 
   card.appendChild(body);
 
-  // Action buttons
+  // Actions
   const actions = document.createElement('div');
   actions.className = 'se-card-actions';
 
   const vaultBtn = document.createElement('button');
-  vaultBtn.className = 'se-btn se-btn-primary';
+  vaultBtn.className = 'se-btn se-btn-vault';
   vaultBtn.innerHTML = '⊞ Vault';
   vaultBtn.addEventListener('click', () => {
     window.open(VAULT_BASE + encodeURIComponent(bc.competitor + ' battlecard'), '_blank');
@@ -571,7 +604,7 @@ function buildBattlecard(bc, onDismiss) {
 
   const dismissBtn = document.createElement('button');
   dismissBtn.className = 'se-btn se-btn-dismiss';
-  dismissBtn.textContent = '✕ Dismiss';
+  dismissBtn.textContent = 'Dismiss';
   dismissBtn.addEventListener('click', onDismiss);
 
   actions.appendChild(vaultBtn);
@@ -584,38 +617,42 @@ function buildBattlecard(bc, onDismiss) {
 function buildFitCard(fc, onDismiss) {
   const card = document.createElement('div');
   card.className = 'se-card';
-  card.style.boxShadow = '0 0 24px rgba(150,191,72,0.12), inset 0 1px 0 rgba(255,255,255,0.06)';
-  card.style.borderColor = 'rgba(150,191,72,0.2)';
+  card.style.boxShadow = '0 0 0 1px rgba(74,222,128,0.18), 0 4px 28px rgba(74,222,128,0.06), inset 0 1px 0 rgba(255,255,255,0.05)';
 
-  const header = document.createElement('div');
-  header.className = 'se-card-header';
+  const accent = document.createElement('div');
+  accent.className = 'se-card-accent';
+  accent.style.background = 'linear-gradient(90deg, #4ade80, transparent)';
+  card.appendChild(accent);
+
+  const meta = document.createElement('div');
+  meta.className = 'se-card-meta';
 
   const pill = document.createElement('div');
   pill.className = 'se-source-pill';
-  pill.style.color = '#96bf48';
-  pill.style.borderColor = '#96bf4840';
-  pill.style.background = '#96bf4812';
+  pill.style.color = '#4ade80';
+  pill.style.borderColor = 'rgba(74,222,128,0.25)';
+  pill.style.background = 'rgba(74,222,128,0.08)';
   const dot = document.createElement('div');
   dot.className = 'se-source-dot';
-  dot.style.background = '#96bf48';
-  dot.style.boxShadow = '0 0 4px #96bf48';
+  dot.style.background = '#4ade80';
+  dot.style.boxShadow = '0 0 5px #4ade80';
   pill.appendChild(dot);
   pill.appendChild(document.createTextNode('Shopify Fit'));
-  header.appendChild(pill);
+  meta.appendChild(pill);
 
   const time = document.createElement('span');
   time.className = 'se-card-time';
-  time.textContent = now();
-  header.appendChild(time);
-  card.appendChild(header);
+  time.textContent = nowTime();
+  meta.appendChild(time);
+  card.appendChild(meta);
 
   const body = document.createElement('div');
   body.className = 'se-card-body';
 
-  const summaryLabel = document.createElement('div');
-  summaryLabel.className = 'se-summary-label';
-  summaryLabel.textContent = 'FIT CARD';
-  body.appendChild(summaryLabel);
+  const typeLabel = document.createElement('div');
+  typeLabel.className = 'se-card-type-label';
+  typeLabel.textContent = 'Fit Card';
+  body.appendChild(typeLabel);
 
   const headline = document.createElement('div');
   headline.className = 'se-card-headline';
@@ -623,14 +660,14 @@ function buildFitCard(fc, onDismiss) {
   body.appendChild(headline);
 
   const sol = document.createElement('div');
-  sol.className = 'se-card-text';
+  sol.className = 'se-card-body-text';
   sol.textContent = fc.shopifySolution;
   body.appendChild(sol);
 
   if (fc.stat) {
     const stat = document.createElement('div');
     stat.className = 'se-stat';
-    stat.textContent = '📊 ' + fc.stat;
+    stat.innerHTML = `<span style="opacity:0.7">📊</span> ${fc.stat}`;
     body.appendChild(stat);
   }
 
@@ -640,7 +677,7 @@ function buildFitCard(fc, onDismiss) {
   actions.className = 'se-card-actions';
   const dismissBtn = document.createElement('button');
   dismissBtn.className = 'se-btn se-btn-dismiss';
-  dismissBtn.textContent = '✕ Dismiss';
+  dismissBtn.textContent = 'Dismiss';
   dismissBtn.addEventListener('click', onDismiss);
   actions.appendChild(dismissBtn);
   card.appendChild(actions);
@@ -652,47 +689,53 @@ function buildCoachingCard(note) {
   const card = document.createElement('div');
   card.className = 'se-coaching-card';
 
-  const header = document.createElement('div');
-  header.className = 'se-card-header';
+  const accent = document.createElement('div');
+  accent.className = 'se-card-accent';
+  accent.style.background = 'linear-gradient(90deg, #fbbf24, transparent)';
+  card.appendChild(accent);
+
+  const meta = document.createElement('div');
+  meta.className = 'se-card-meta';
+  meta.style.paddingTop = '10px';
   const pill = document.createElement('div');
   pill.className = 'se-source-pill';
   pill.style.color = '#fbbf24';
-  pill.style.borderColor = '#fbbf2440';
-  pill.style.background = '#fbbf2408';
+  pill.style.borderColor = 'rgba(251,191,36,0.25)';
+  pill.style.background = 'rgba(251,191,36,0.08)';
   const dot = document.createElement('div');
   dot.className = 'se-source-dot';
   dot.style.background = '#fbbf24';
-  dot.style.boxShadow = '0 0 4px #fbbf24';
+  dot.style.boxShadow = '0 0 5px #fbbf24';
   pill.appendChild(dot);
   pill.appendChild(document.createTextNode('Coaching'));
-  header.appendChild(pill);
+  meta.appendChild(pill);
   const time = document.createElement('span');
   time.className = 'se-card-time';
-  time.textContent = now();
-  header.appendChild(time);
-  card.appendChild(header);
+  time.textContent = nowTime();
+  meta.appendChild(time);
+  card.appendChild(meta);
 
   const body = document.createElement('div');
   body.className = 'se-card-body';
-  const lbl = document.createElement('div');
-  lbl.className = 'se-summary-label';
-  lbl.textContent = 'COACHING NOTE';
-  body.appendChild(lbl);
+  const typeLabel = document.createElement('div');
+  typeLabel.className = 'se-card-type-label';
+  typeLabel.textContent = 'Coaching Note';
+  body.appendChild(typeLabel);
   const txt = document.createElement('div');
-  txt.className = 'se-card-headline';
+  txt.style.fontSize = '13px';
   txt.style.fontWeight = '500';
-  txt.style.color = 'rgba(251,191,36,0.9)';
-  txt.style.fontSize = '12px';
+  txt.style.color = 'rgba(251,191,36,0.85)';
+  txt.style.lineHeight = '1.6';
   txt.textContent = note;
   body.appendChild(txt);
   card.appendChild(body);
   return card;
 }
 
-// ── Transcript error helper ───────────────────────────────────────────────
+// ── Transcript error ──────────────────────────────────────────────────────
 let errorTimer = null;
 function showTranscriptError(msg) {
-  const el = document.getElementById('se-transcript');
+  const el = document.getElementById('se-transcript-text');
   if (!el) return;
   el.textContent = '⚠ ' + msg;
   el.classList.add('se-error');
@@ -714,9 +757,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case 'LISTENING_STARTED': {
       isListening = true;
-      document.getElementById('se-status-dot')?.classList.add('se-active');
-      const st = document.getElementById('se-status-text');
-      if (st) st.textContent = 'Listening…';
+      document.getElementById('se-live-pill')?.classList.add('se-visible');
+      const txt = document.getElementById('se-transcript-text');
+      if (txt) txt.textContent = '';
       toggleBtn.classList.add('se-listening');
       toggleBtn.classList.remove('se-alert');
       setPanel(true);
@@ -725,15 +768,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'LISTENING_STOPPED': {
       isListening = false;
-      document.getElementById('se-status-dot')?.classList.remove('se-active');
-      const st = document.getElementById('se-status-text');
-      if (st) st.textContent = 'Stopped — click extension icon to resume';
+      document.getElementById('se-live-pill')?.classList.remove('se-visible');
+      const txt = document.getElementById('se-transcript-text');
+      if (txt) txt.textContent = 'Stopped — open extension to resume';
       toggleBtn.classList.remove('se-listening');
       break;
     }
 
     case 'TRANSCRIPT_UPDATE': {
-      const el = document.getElementById('se-transcript');
+      const el = document.getElementById('se-transcript-text');
       if (el && !el.classList.contains('se-error')) el.textContent = msg.text;
       break;
     }
@@ -778,7 +821,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       if (newCards.length > 0) {
         cards = [...cards, ...newCards];
-        // Cap at MAX_CARDS, keeping the most recent
         if (cards.length > MAX_CARDS) cards = cards.slice(cards.length - MAX_CARDS);
 
         if (panelOpen) {
