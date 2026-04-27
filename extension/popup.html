@@ -101,6 +101,18 @@
     }
     .field-input:focus { border-color: rgba(74,222,128,0.35); }
     .field-hint { font-size: 10px; color: rgba(255,255,255,0.16); margin-top: 5px; line-height: 1.5; }
+
+    .server-status {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 8px; font-size: 10px;
+    }
+    .srv-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.15);
+    }
+    .srv-dot.online  { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.6); }
+    .srv-dot.offline { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.5); }
+    .srv-label { color: rgba(255,255,255,0.22); }
   </style>
 </head>
 <body>
@@ -130,7 +142,10 @@
 
     <div class="field-label">Server URL</div>
     <input class="field-input" id="serverUrl" type="text" placeholder="http://localhost:3002" />
-    <div class="field-hint">Where shopi-eval-bot is running</div>
+    <div class="server-status">
+      <div class="srv-dot" id="srvDot"></div>
+      <span class="srv-label" id="srvLabel">Checking…</span>
+    </div>
   </div>
 
   <script src="popup.js"></script>

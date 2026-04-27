@@ -10,6 +10,7 @@ const serverUrlInput = document.getElementById('serverUrl');
 
 let isCapturing = false;
 let currentTabId = null;
+let serverCheckTimer = null;
 
 // ── Load saved settings ───────────────────────────────────────────────────
 chrome.storage.local.get(['serverUrl'], ({ serverUrl }) => {
@@ -18,7 +19,37 @@ chrome.storage.local.get(['serverUrl'], ({ serverUrl }) => {
 
 serverUrlInput.addEventListener('change', () => {
   chrome.storage.local.set({ serverUrl: serverUrlInput.value.trim() });
+  checkServer();
 });
+
+// ── Server status indicator ───────────────────────────────────────────────
+const srvDot   = document.getElementById('srvDot');
+const srvLabel = document.getElementById('srvLabel');
+
+async function checkServer() {
+  const url = serverUrlInput.value.trim() || 'http://localhost:3002';
+  srvDot.className = 'srv-dot';
+  srvLabel.textContent = 'Checking…';
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3000);
+    const res = await fetch(`${url}/api/transcribe`, { method: 'OPTIONS', signal: ctrl.signal }).catch(() => null);
+    clearTimeout(t);
+    if (res) {
+      srvDot.className = 'srv-dot online';
+      srvLabel.textContent = 'Server online';
+    } else {
+      throw new Error();
+    }
+  } catch (_) {
+    srvDot.className = 'srv-dot offline';
+    srvLabel.textContent = 'Server offline — run pnpm dev';
+  }
+}
+
+// Check on open, re-check every 8s
+checkServer();
+serverCheckTimer = setInterval(checkServer, 8000);
 
 // ── Detect Meet tab and check content script is injected ─────────────────
 chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -71,7 +102,7 @@ function updateUI() {
 }
 
 // ── Button click ──────────────────────────────────────────────────────────
-mainBtn.addEventListener('click', () => {
+mainBtn.addEventListener('click', async () => {
   mainBtn.disabled = true;
   errMsg.style.display = 'none';
 
@@ -82,20 +113,41 @@ mainBtn.addEventListener('click', () => {
       isCapturing = false;
       updateUI();
     });
-  } else {
-    chrome.runtime.sendMessage(
-      { type: 'START_CAPTURE', tabId: currentTabId, serverUrl },
-      (res) => {
-        if (res?.error) {
-          showError(res.error);
-          mainBtn.disabled = false;
-        } else {
-          isCapturing = true;
-          updateUI();
-        }
-      }
-    );
+    return;
   }
+
+  // Pre-check: confirm server is reachable before capturing audio
+  statusText.textContent = 'Checking server…';
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(`${serverUrl}/api/transcribe`, {
+      method: 'OPTIONS',
+      signal: ctrl.signal,
+    }).catch(() => null);
+    clearTimeout(t);
+
+    if (!res) throw new Error('Server not reachable');
+  } catch (_) {
+    showError(`Cannot reach server at ${serverUrl}\n\nMake sure "pnpm dev" is running.`);
+    statusText.textContent = 'Ready — on Google Meet';
+    mainBtn.disabled = false;
+    return;
+  }
+
+  chrome.runtime.sendMessage(
+    { type: 'START_CAPTURE', tabId: currentTabId, serverUrl },
+    (res) => {
+      if (res?.error) {
+        showError(res.error);
+        statusText.textContent = 'Ready — on Google Meet';
+        mainBtn.disabled = false;
+      } else {
+        isCapturing = true;
+        updateUI();
+      }
+    }
+  );
 });
 
 // ── Background broadcasts ─────────────────────────────────────────────────
